@@ -1,0 +1,33 @@
+---
+description: After 2+ failed fix attempts, stop digging and revert to the last known-good commit
+alwaysApply: true
+---
+
+# Revert to Known-Good After 2 Failed Attempts
+
+When a fix attempt fails and produces a **new, different error**, do NOT stack another fix on top.
+
+## Rule
+
+After **2 consecutive failed attempts** on the same problem:
+
+1. **Stop**. Do not read more source files or try another hypothesis.
+2. **Find the last working commit**: `git log --oneline -20` — ask the user which one worked.
+3. **Revert the file**: `git checkout <working-commit> -- path/to/file`
+4. **Apply only the user's intended change** (e.g. bump seq_length). Do not re-apply incidental changes.
+5. **Preserve existing infra** — if volumes/caches exist, keep using them; don't revert to re-downloading.
+6. **Commit and run**. Verify it works before making any further changes.
+
+## One change at a time
+
+After restoring a working state, re-introduce changes **one per commit**, verifying after each.
+
+```bash
+# ❌ BAD: change 5 things in one commit
+# base image + batch_size + gradient_checkpointing + num_gpus + attn_impl
+
+# ✅ GOOD: one change per commit, test after each
+git commit -m "bump seq_length to 4096"       # → run, verify
+git commit -m "add volume caching"             # → run, verify
+git commit -m "enable gradient checkpointing"  # → run, verify
+```
