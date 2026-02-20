@@ -1,0 +1,30 @@
+---
+description: MoE models require determinism_check=none for gradient checkpointing
+globs: Qwen3-Coder/**/*.py
+alwaysApply: false
+---
+
+# MoE Gradient Checkpointing: Disable Determinism Check
+
+MoE gating (top-k expert routing) is non-deterministic across forward recomputation.
+PyTorch's non-reentrant checkpoint (`use_reentrant=False`, the default under DDP in ms-swift)
+verifies recomputed tensors match the original — this fails for MoE models.
+
+## Fix
+
+Always pass `determinism_check: "none"` when using gradient checkpointing with MoE models.
+
+```python
+# CLI (subprocess)
+'--gradient_checkpointing_kwargs', '{"determinism_check": "none"}'
+
+# Python API
+gradient_checkpointing_kwargs={'determinism_check': 'none'}
+```
+
+## Why not use_reentrant=True?
+
+DeepSpeed/FSDP paths default to `use_reentrant=True` which avoids the check, but plain DDP
+defaults to `use_reentrant=False`. Explicitly disabling the check is more targeted than
+switching reentrant mode, which has its own issues (no support for multiple `requires_grad`
+boundaries).
